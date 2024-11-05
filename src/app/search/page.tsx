@@ -1,4 +1,34 @@
-const Page = () => {
-    return <p>hello</p>
+"use client";
+import { db } from "@/db";
+import { productsTable } from "@/db/schema";
+import { sql } from "drizzle-orm";
+import { redirect } from "next/navigation";
+
+interface PageProps {
+  searchParams: {
+    [key: string]: string | string[] | undefined;
+  };
 }
-export default Page
+const Page = async ({ searchParams }: PageProps) => {
+  const query = searchParams.query;
+
+  /* Some Checks */
+  if (Array.isArray(query) || !query) {
+    return redirect("/");
+  }
+
+  /*Query Logic*/
+
+  let products = await db
+    .select()
+    .from(productsTable)
+    .where(
+      sql`to_tsvector('simple', lower(${productsTable.name} || ' ' || ${
+        productsTable.description
+      } )) 
+        @@ to_tsquery('simple', lower(${query.trim().split(' ').join(' & ')}))`
+    )
+    .limit(3);
+  return <pre>{JSON.stringify(products)}</pre>;
+};
+export default Page;
